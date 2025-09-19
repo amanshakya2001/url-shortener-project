@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
-const privateKey = "amanshakyavedantomrachit!@#$$31"
+const privateKey = process.env.JWT_SECRET;
 
-const createJWTToken = (email) => {
-    return jwt.sign({ email  }, privateKey);
+const createJWTToken = (payload) => {
+    return jwt.sign(payload, privateKey);
 }
 
 const verifyJWTToken = (token) => {

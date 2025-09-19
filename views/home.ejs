@@ -9,82 +9,120 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <style>
-    body { background: #f8f9fa; }
+    :root { --brand: #0d6efd; }
+    body { background: #f4f6fb; min-height: 100vh; display: flex; flex-direction: column; }
     .brand { font-weight: 700; letter-spacing: 0.4px; }
+    .card { border: 0; border-radius: 1rem; }
     .short-link { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
+    .helper { color: #6c757d; }
     .table-fixed tbody { max-height: 360px; overflow-y: auto; display: block; }
     .table-fixed thead, .table-fixed tbody tr { display: table; width: 100%; table-layout: fixed; }
+    .table thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
+    .chip { background: #e7f1ff; color: #0b5ed7; border-radius: 999px; padding: .25rem .75rem; }
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 py-3">
+  <nav class="navbar navbar-expand-lg bg-white shadow-sm">
     <div class="container">
-      <a class="navbar-brand brand" href="#">URL Shortener</a>
+      <a class="navbar-brand brand d-flex align-items-center gap-2" href="#">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="24" height="24" rx="5" fill="var(--brand)"></rect>
+          <path d="M8 12h8" stroke="white" stroke-width="1.5" stroke-linecap="round"></path>
+          <path d="M8 8h8" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.8"></path>
+        </svg>
+        <span>URL Shortener</span>
+      </a>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <% if (locals.email) { %>
+          <span class="chip small"><%= locals.email %></span>
+          <a href="/logout" class="btn btn-sm btn-outline-secondary">Logout</a>
+        <% } else { %>
+          <a href="/login" class="btn btn-sm btn-outline-secondary">Login</a>
+          <a href="/signup" class="btn btn-sm btn-primary">Sign up</a>
+        <% } %>
+      </div>
     </div>
   </nav>
 
-  <main class="container">
-    <div class="row g-5">
-      <div class="col-6 mx-auto">
-        <div class="card shadow">
-          <div class="card-body">
-            <h5 class="card-title">Create a short URL</h5>
-            <p class="card-text text-muted">Enter a destination URL and click Create. Example: <code>https://www.google.com</code></p>
+  <main class="container flex-grow-1">
+    <div class="row g-5 py-4">
+      <div class="col-12 col-lg-8 col-xl-6 mx-auto">
+        <div class="card shadow-sm">
+          <div class="card-body p-4">
+            <h5 class="card-title mb-2">Create a short URL</h5>
+            <p class="card-text helper">Enter a destination URL and click Create. Example: <code>https://www.google.com</code></p>
 
             <!-- Alerts -->
             <div id="alertPlaceholder"></div>
 
             <form id="createForm" novalidate>
-              <div class="mb-3">
-                <label for="redirecturl" class="form-label">Destination URL</label>
+              <div class="form-floating mb-3">
                 <input id="redirecturl" name="redirecturl" type="url" class="form-control" placeholder="https://example.com" required>
+                <label for="redirecturl">Destination URL</label>
                 <div class="invalid-feedback">Please enter a valid URL (including http/https).</div>
               </div>
 
-              <div class="d-flex gap-2">
-                <button id="createbtn" class="btn btn-primary w-100" type="submit">Create</button>
+              <div class="d-grid">
+                <button id="createbtn" class="btn btn-primary btn-lg" type="submit">
+                  <span id="btnText">Create</span>
+                  <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                </button>
               </div>
             </form>
 
             <hr>
 
-            <div class="text-muted small">
-              Note: Short URLs will be created on <code>http://localhost:8000/</code>.
+            <div class="helper small">
+              Note: Short URLs will be created on <code><%= process.env.DOMAIN %></code>.
             </div>
           </div>
         </div>
       </div>
       <div class="col-12">
         <div class="card shadow-sm h-100">
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title">Existing Short URLs</h5>
-            <p class="text-muted small mb-2">Click a short link to open the destination in a new tab.</p>
+          <div class="card-body d-flex flex-column p-0">
+            <div class="p-4 pb-2">
+              <h5 class="card-title mb-1">Existing Short URLs</h5>
+              <p class="helper small mb-0">Click a short link to open the destination in a new tab.</p>
+            </div>
 
             <div class="table-responsive">
               <table class="table table-hover align-middle table-fixed">
                 <thead class="table-light">
                   <tr>
-                    <th>Short ID</th>
-                    <th>Destination</th>
-                    <th>Clicks</th>
-                    <th>Actions</th>
+                    <th style="width: 15%">Short ID</th>
+                    <th style="width: 60%">Destination</th>
+                    <th style="width: 10%">Clicks</th>
+                    <th style="width: 15%">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="urlsTableBody">
                   <% if (urls && urls.length) { %>
                     <% urls.forEach((url) => { %>
                       <tr id="row-<%= url.shortid %>">
-                        <td class="short-link"><%= url.shortid %></td>
-                        <td title="<%= url.redirecturl %>"><%= url.redirecturl %></td>
-                        <td><%= url.clicks %></td>
-                        <td>
-                          <a class="btn btn-sm btn-outline-secondary copy-btn" href="http://localhost:8000/<%= url.shortid %>" target="_blank">Visit</a>
+                        <td class="short-link text-truncate"><%= url.shortid %></td>
+                        <td class="text-truncate" title="<%= url.redirecturl %>"><%= url.redirecturl %></td>
+                        <td><span class="badge text-bg-light"><%= url.clicks %></span></td>
+                        <td class="d-flex gap-2">
+                          <a class="btn btn-sm btn-outline-secondary" href="<%= process.env.DOMAIN %>/<%= url.shortid %>" target="_blank">Visit</a>
+                          <button class="btn btn-sm btn-outline-primary copy-btn" data-url="<%= process.env.DOMAIN %>/<%= url.shortid %>">Copy</button>
                         </td>
                       </tr>
                     <% }); %>
                   <% } else { %>
                     <tr>
-                      <td colspan="4" class="text-center text-muted">No short URLs found.</td>
+                      <td colspan="4" class="text-center p-5">
+                        <div class="d-flex flex-column align-items-center gap-3">
+                          <!-- Simple link illustration -->
+                          <svg width="96" height="96" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M10 14l-2 2a4 4 0 1 1-5.657-5.657l3-3A4 4 0 0 1 10 8" stroke="#93c5fd" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M14 10l2-2a4 4 0 1 1 5.657 5.657l-3 3A4 4 0 0 1 14 16" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M8 12h8" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+                          </svg>
+                          <div class="fw-semibold">No short URLs yet</div>
+                          <div class="helper">Create your first link using the form above.</div>
+                        </div>
+                      </td>
                     </tr>
                   <% } %>
                 </tbody>
@@ -96,10 +134,18 @@
     </div>
   </main>
 
+  <footer class="bg-white border-top py-3 mt-auto">
+    <div class="container text-center small text-muted">© <span id="year"></span> URL Shortener — All rights reserved.</div>
+  </footer>
+
   <!-- Bootstrap JS + Popper (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
+    // Set footer year if present
+    const _yEl = document.getElementById('year');
+    if (_yEl) _yEl.textContent = new Date().getFullYear();
+
     // Helpers
     const showAlert = (type, message, timeout = 5000) => {
       const wrapper = document.getElementById('alertPlaceholder');
@@ -126,16 +172,23 @@
         <tr id="row-${shortid}">
           <td class="short-link text-truncate">${shortid}</td>
           <td class="text-truncate" title="${redirectUrl}">${redirectUrl}</td>
-          <td>${clicks}</td>
-          <td><a class="btn btn-sm btn-outline-secondary copy-btn" href="${shortUrl}" target="_blank">Visit</a></td>
+          <td><span class="badge text-bg-light">${clicks}</span></td>
+          <td class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="${shortUrl}" target="_blank">Visit</a>
+            <button class="btn btn-sm btn-outline-primary copy-btn" data-url="${shortUrl}">Copy</button>
+          </td>
         </tr>
       `;
     };
 
     // DOM elements
-    const form = document.getElementById('createForm');
-    const redirectInput = document.getElementById('redirecturl');
-    const tableBody = document.getElementById('urlsTableBody');
+    const $ = (id) => document.getElementById(id);
+    const form = $('createForm');
+    const redirectInput = $('redirecturl');
+    const tableBody = $('urlsTableBody');
+    const createBtn = $('createbtn');
+    const btnText = $('btnText');
+    const btnSpinner = $('btnSpinner');
 
     // Form submit (fetch POST)
     form.addEventListener('submit', async (e) => {
@@ -147,8 +200,7 @@
         redirectInput.classList.add('is-invalid');
         return;
       }
-
-      // Basic URL validation
+      // Basic URL validation (client-side) before network
       try {
         new URL(value);
       } catch (_) {
@@ -157,6 +209,10 @@
       }
 
       try {
+        // Disable button and show spinner
+        if (createBtn) createBtn.disabled = true;
+        if (btnSpinner) btnSpinner.classList.remove('d-none');
+
         const resp = await fetch('/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -177,7 +233,7 @@
 
         // Insert new row into table
         if (data.url) {
-          // data.url expected like "http://localhost:8000/SHORTID"
+          // data.url expected like "/SHORTID"
           const parts = data.url.split('/');
           const shortid = parts[parts.length - 1];
           const newRowHtml = createRowHtml(data.url, value, 0, shortid);
@@ -194,6 +250,22 @@
         }
       } catch (err) {
         showAlert('danger', `An unexpected error occurred: ${err.message}`);
+      } finally {
+        if (createBtn) createBtn.disabled = false;
+        if (btnSpinner) btnSpinner.classList.add('d-none');
+      }
+    });
+
+    // Copy button handler
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.copy-btn');
+      if (!btn) return;
+      const url = btn.getAttribute('data-url') || btn.getAttribute('href');
+      try {
+        await navigator.clipboard.writeText(url);
+        showAlert('success', 'Short URL copied to clipboard!', 2500);
+      } catch (_) {
+        showAlert('warning', 'Press Ctrl/Cmd + C to copy.', 2500);
       }
     });
   </script>

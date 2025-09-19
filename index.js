@@ -107,7 +107,6 @@ app.post("/login", async (req, res) => {
         return res.cookie("sessionid", token).status(201).json({ message: `Logged in successfully.` });
     }
     catch (error) {
-        console.log(error);
         return res.status(500).json({ error: `An unexpected error occurred. Please try again later.` });
     }
 })

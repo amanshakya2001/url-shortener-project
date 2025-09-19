@@ -28,10 +28,17 @@ app.use(checkAuthentication());
 
 app.get("/", async (req, res) => {
     try {
-        const urls = await Url.find({ userid: req.id });
+        let urls;
+        if (req.role === "user") {
+            urls = await Url.find({ userid: req.id });
+        }
+        else if (req.role === "admin") {
+            urls = await Url.find({}).populate("userid");
+        }
         return res.status(200).render("home", {
             urls,
-            "email": req.email
+            "email": req.email,
+            "role": req.role
         });
     } catch (error) {
         return res.status(500).json({ error: `An unexpected error occurred. Please try again later.` });
@@ -46,7 +53,7 @@ app.post("/", async (req, res) => {
         }
         let shortid = generateUniqueId({ length: 8 });
 
-        if (!req.id) {
+        if (!req.id && req.role !== "user") {
             return res.status(400).json({ error: "Please log in to create short URLs." });
         }
 
@@ -93,12 +100,14 @@ app.post("/login", async (req, res) => {
         }
         let payload = {
             email,
-            id: user.id
+            id: user.id,
+            role: user.role
         }
         let token = createJWTToken(payload);
         return res.cookie("sessionid", token).status(201).json({ message: `Logged in successfully.` });
     }
     catch (error) {
+        console.log(error);
         return res.status(500).json({ error: `An unexpected error occurred. Please try again later.` });
     }
 })
@@ -127,7 +136,8 @@ app.post("/signup", async (req, res) => {
         })
         let payload = {
             email,
-            id: user.id
+            id: user.id,
+            role: user.role
         }
         let token = createJWTToken(payload);
         return res.cookie("sessionid", token).status(201).json({ message: `Account created successfully.` });

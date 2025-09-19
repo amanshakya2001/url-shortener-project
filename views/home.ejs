@@ -93,6 +93,9 @@
                     <th>Short ID</th>
                     <th>Destination</th>
                     <th>Clicks</th>
+                    <% if (role === "admin") { %>
+                      <th>Created By</th>
+                    <% } %>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -103,6 +106,9 @@
                         <td class="short-link text-truncate"><%= url.shortid %></td>
                         <td class="text-truncate" title="<%= url.redirecturl %>"><%= url.redirecturl %></td>
                         <td><span class="badge text-bg-light"><%= url.clicks %></span></td>
+                        <% if (role === "admin") { %>
+                          <td><%= url.userid.email %></td>
+                        <% } %>
                         <td class="d-flex gap-2">
                           <a class="btn btn-sm btn-outline-secondary" href="<%= process.env.DOMAIN %>/<%= url.shortid %>" target="_blank">Visit</a>
                           <button class="btn btn-sm btn-outline-primary copy-btn" data-url="<%= process.env.DOMAIN %>/<%= url.shortid %>">Copy</button>

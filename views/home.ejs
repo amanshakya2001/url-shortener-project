@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>URL Shortener</title>
+
+  <!-- Bootstrap CSS (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body { background: #f8f9fa; }
+    .brand { font-weight: 700; letter-spacing: 0.4px; }
+    .short-link { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
+    .table-fixed tbody { max-height: 360px; overflow-y: auto; display: block; }
+    .table-fixed thead, .table-fixed tbody tr { display: table; width: 100%; table-layout: fixed; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 py-3">
+    <div class="container">
+      <a class="navbar-brand brand" href="#">URL Shortener</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="row g-5">
+      <div class="col-6 mx-auto">
+        <div class="card shadow">
+          <div class="card-body">
+            <h5 class="card-title">Create a short URL</h5>
+            <p class="card-text text-muted">Enter a destination URL and click Create. Example: <code>https://www.google.com</code></p>
+
+            <!-- Alerts -->
+            <div id="alertPlaceholder"></div>
+
+            <form id="createForm" novalidate>
+              <div class="mb-3">
+                <label for="redirecturl" class="form-label">Destination URL</label>
+                <input id="redirecturl" name="redirecturl" type="url" class="form-control" placeholder="https://example.com" required>
+                <div class="invalid-feedback">Please enter a valid URL (including http/https).</div>
+              </div>
+
+              <div class="d-flex gap-2">
+                <button id="createbtn" class="btn btn-primary w-100" type="submit">Create</button>
+              </div>
+            </form>
+
+            <hr>
+
+            <div class="text-muted small">
+              Note: Short URLs will be created on <code>http://localhost:8000/</code>.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="card shadow-sm h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">Existing Short URLs</h5>
+            <p class="text-muted small mb-2">Click a short link to open the destination in a new tab.</p>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle table-fixed">
+                <thead class="table-light">
+                  <tr>
+                    <th>Short ID</th>
+                    <th>Destination</th>
+                    <th>Clicks</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="urlsTableBody">
+                  <% if (urls && urls.length) { %>
+                    <% urls.forEach((url) => { %>
+                      <tr id="row-<%= url.shortid %>">
+                        <td class="short-link"><%= url.shortid %></td>
+                        <td title="<%= url.redirecturl %>"><%= url.redirecturl %></td>
+                        <td><%= url.clicks %></td>
+                        <td>
+                          <a class="btn btn-sm btn-outline-secondary copy-btn" href="http://localhost:8000/<%= url.shortid %>" target="_blank">Visit</a>
+                        </td>
+                      </tr>
+                    <% }); %>
+                  <% } else { %>
+                    <tr>
+                      <td colspan="4" class="text-center text-muted">No short URLs found.</td>
+                    </tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bootstrap JS + Popper (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Helpers
+    const showAlert = (type, message, timeout = 5000) => {
+      const wrapper = document.getElementById('alertPlaceholder');
+      const alertId = 'alert-' + Date.now();
+      const alertHtml = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>`;
+      wrapper.innerHTML = alertHtml + wrapper.innerHTML;
+      if (timeout) {
+        setTimeout(() => {
+          const el = document.getElementById(alertId);
+          if (el) {
+            const bs = bootstrap.Alert.getOrCreateInstance(el);
+            bs.close();
+          }
+        }, timeout);
+      }
+    };
+
+    const createRowHtml = (shortUrl, redirectUrl, clicks, shortid) => {
+      return `
+        <tr id="row-${shortid}">
+          <td class="short-link text-truncate">${shortid}</td>
+          <td class="text-truncate" title="${redirectUrl}">${redirectUrl}</td>
+          <td>${clicks}</td>
+          <td><a class="btn btn-sm btn-outline-secondary copy-btn" href="${shortUrl}" target="_blank">Visit</a></td>
+        </tr>
+      `;
+    };
+
+    // DOM elements
+    const form = document.getElementById('createForm');
+    const redirectInput = document.getElementById('redirecturl');
+    const tableBody = document.getElementById('urlsTableBody');
+
+    // Form submit (fetch POST)
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      redirectInput.classList.remove('is-invalid');
+
+      const value = redirectInput.value.trim();
+      if (!value) {
+        redirectInput.classList.add('is-invalid');
+        return;
+      }
+
+      // Basic URL validation
+      try {
+        new URL(value);
+      } catch (_) {
+        redirectInput.classList.add('is-invalid');
+        return;
+      }
+
+      try {
+        const resp = await fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ redirecturl: value })
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          // Show error from server if available
+          const errMsg = data?.error || data?.message || 'An unexpected error occurred.';
+          showAlert('danger', errMsg);
+          return;
+        }
+
+        // Success
+        showAlert('success', data.message || 'Short URL created successfully.');
+
+        // Insert new row into table
+        if (data.url) {
+          // data.url expected like "http://localhost:8000/SHORTID"
+          const parts = data.url.split('/');
+          const shortid = parts[parts.length - 1];
+          const newRowHtml = createRowHtml(data.url, value, 0, shortid);
+
+          // If "No short URLs found." row exists, remove it
+          const noRows = tableBody.querySelector('td[colspan="4"]');
+          if (noRows) tableBody.innerHTML = newRowHtml;
+          else tableBody.insertAdjacentHTML('afterbegin', newRowHtml);
+
+          // clear input
+          redirectInput.value = '';
+        } else {
+          // If server returns created id differently, just reload table visually (user can refresh).
+        }
+      } catch (err) {
+        showAlert('danger', `An unexpected error occurred: ${err.message}`);
+      }
+    });
+  </script>
+</body>
+</html>

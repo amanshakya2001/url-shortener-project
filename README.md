@@ -1,54 +1,37 @@
 # URL Shortener
 
-A full-stack URL shortening service with click tracking, user authentication, and an admin dashboard.
+A URL shortening service with user authentication, custom short links, click tracking, and an admin dashboard.
+
+## Features
+
+- User signup and login with JWT cookie-based auth
+- Shorten any URL to an 8-character unique ID
+- Click counter — tracks how many times each short link is visited
+- User dashboard showing personal links
+- Admin dashboard with visibility over all users' links
+- Instant redirect on visiting a short URL
 
 ## Tech Stack
 
 - **Backend:** Node.js, Express.js
-- **Database:** MongoDB with Mongoose
+- **Database:** MongoDB, Mongoose
+- **Auth:** JWT, bcrypt
 - **Templating:** EJS
-- **Auth:** JWT + Cookie-based sessions
-
-## Features
-
-- Shorten any long URL into an 8-character unique short link
-- Redirect from short URL to original URL
-- Track total click count per URL
-- User authentication (signup, login)
-- User dashboard to manage personal short URLs
-- Admin dashboard to view all URLs across users
-- Role-based access (user / admin)
-
-## Project Structure
-
-```
-url-shortener-project/
-├── controllers/       # Route handler logic
-├── models/            # Mongoose schemas (URL, User)
-├── routers/           # Express route definitions
-├── middleware/        # Auth middleware
-├── utils/             # JWT helpers
-├── views/             # EJS templates (home, login, signup)
-└── index.js           # App entry point
-```
-
-## How It Works
-
-1. User submits a long URL via the dashboard
-2. System generates a unique 8-character short ID
-3. Short URL is stored in MongoDB linked to the user
-4. Visiting `/:shortid` redirects to the original URL and increments the click counter
+- **Short ID:** `generate-unique-id`
+- **Dev:** Nodemon
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js
-- MongoDB
+- Node.js >= 14
+- MongoDB (local or Atlas)
 
 ### Installation
 
 ```bash
+git clone https://github.com/amanshakya2001/url-shortener-project.git
+cd url-shortener-project
 npm install
 ```
 
@@ -59,13 +42,27 @@ Create a `.env` file:
 ```env
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
-PORT=8000
+PORT=3000
 ```
 
-### Run
+### Running
 
 ```bash
-node index.js
+npm start
 ```
 
-App runs on [http://localhost:8000](http://localhost:8000)
+Visit `http://localhost:3000`
+
+## Project Structure
+
+```
+├── models/       # Mongoose schemas (User, URL)
+├── routes/       # Auth and URL routes
+├── views/        # EJS templates
+├── public/       # Static assets
+└── index.js
+```
+
+## License
+
+MIT

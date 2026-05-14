@@ -112,6 +112,7 @@
                         <td class="d-flex gap-2">
                           <a class="btn btn-sm btn-outline-secondary" href="<%= process.env.DOMAIN %>/<%= url.shortid %>" target="_blank">Visit</a>
                           <button class="btn btn-sm btn-outline-primary copy-btn" data-url="<%= process.env.DOMAIN %>/<%= url.shortid %>">Copy</button>
+                          <button class="btn btn-sm btn-outline-danger delete-btn" data-shortid="<%= url.shortid %>">Delete</button>
                         </td>
                       </tr>
                     <% }); %>
@@ -272,6 +273,26 @@
         showAlert('success', 'Short URL copied to clipboard!', 2500);
       } catch (_) {
         showAlert('warning', 'Press Ctrl/Cmd + C to copy.', 2500);
+      }
+    });
+
+    // Delete button handler
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.delete-btn');
+      if (!btn) return;
+      const shortid = btn.getAttribute('data-shortid');
+      if (!confirm(`Delete short URL "${shortid}"?`)) return;
+      try {
+        btn.disabled = true;
+        const resp = await fetch(`/url/${shortid}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (!resp.ok) { showAlert('danger', data.error || 'Failed to delete.'); btn.disabled = false; return; }
+        const row = document.getElementById(`row-${shortid}`);
+        if (row) row.remove();
+        showAlert('success', 'Short URL deleted.', 2500);
+      } catch (err) {
+        showAlert('danger', `Error: ${err.message}`);
+        btn.disabled = false;
       }
     });
   </script>

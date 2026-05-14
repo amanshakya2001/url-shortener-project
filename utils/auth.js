@@ -1,16 +1,9 @@
 const jwt = require('jsonwebtoken');
+
 const privateKey = process.env.JWT_SECRET;
-console.log(privateKey);
 
-const createJWTToken = (payload) => {
-    return jwt.sign(payload, privateKey);
-}
+const createJWTToken = (payload) => jwt.sign(payload, privateKey, { expiresIn: '7d' });
 
-const verifyJWTToken = (token) => {
-    return jwt.verify(token,privateKey);
-}
+const verifyJWTToken = (token) => jwt.verify(token, privateKey);
 
-module.exports = {
-    createJWTToken,
-    verifyJWTToken
-}
+module.exports = { createJWTToken, verifyJWTToken };

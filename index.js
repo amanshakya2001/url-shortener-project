@@ -1,10 +1,12 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
-const dotenv = require('dotenv');
 const generateUniqueId = require('generate-unique-id');
 
 const Url = require('./models/urls');
@@ -12,19 +14,18 @@ const User = require('./models/users');
 const { createJWTToken } = require('./utils/auth');
 const { checkAuthentication } = require('./middleware/auth');
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 8000;
 const DOMAIN = process.env.DOMAIN || `http://localhost:${PORT}`;
 
-mongoose.connect(process.env.MONGODB)
+mongoose.connect(process.env.MONGODB, { tlsAllowInvalidCertificates: true })
   .then(() => console.log('Database connected successfully!'))
-  .catch((err) => { console.error('Database connection failed:', err.message); process.exit(1); });
+  .catch((err) => console.error('Database connection failed:', err.message));
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
 // Rate limit login/signup to prevent brute force
@@ -48,10 +49,10 @@ const isValidUrl = (str) => {
 // ── Home ──────────────────────────────────────────────
 app.get('/', async (req, res) => {
   try {
-    let urls;
-    if (req.role === 'user') urls = await Url.find({ userid: req.id });
-    else if (req.role === 'admin') urls = await Url.find({}).populate('userid');
-    return res.status(200).render('home', { urls, email: req.email, role: req.role });
+    let urls = [];
+    if (req.role === 'user') urls = await Url.find({ userid: req.id }).sort({ createdAt: -1 });
+    else if (req.role === 'admin') urls = await Url.find({}).populate('userid').sort({ createdAt: -1 });
+    return res.status(200).render('home', { urls, email: req.email, role: req.role, domain: DOMAIN });
   } catch (error) {
     return res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
   }
@@ -59,7 +60,7 @@ app.get('/', async (req, res) => {
 
 app.post('/', async (req, res) => {
   try {
-    if (!req.id || req.role !== 'user') {
+    if (!req.id) {
       return res.status(401).json({ error: 'Please log in to create short URLs.' });
     }
     const { redirecturl } = req.body;
@@ -91,7 +92,7 @@ app.delete('/url/:shortid', async (req, res) => {
 // ── Auth ──────────────────────────────────────────────
 app.get('/login', (req, res) => {
   if (req.email) return res.redirect('/');
-  return res.status(200).render('login');
+  return res.status(200).render('login', { domain: DOMAIN });
 });
 
 app.post('/login', authLimiter, async (req, res) => {
@@ -113,7 +114,7 @@ app.post('/login', authLimiter, async (req, res) => {
 
 app.get('/signup', (req, res) => {
   if (req.email) return res.redirect('/');
-  return res.status(200).render('signup');
+  return res.status(200).render('signup', { domain: DOMAIN });
 });
 
 app.post('/signup', authLimiter, async (req, res) => {
@@ -138,7 +139,7 @@ app.post('/signup', authLimiter, async (req, res) => {
   }
 });
 
-app.get('/logout', (req, res) => {
+app.get('/logout', (_req, res) => {
   res.clearCookie('sessionid');
   return res.redirect('/');
 });

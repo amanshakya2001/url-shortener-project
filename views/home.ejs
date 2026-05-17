@@ -3,298 +3,441 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>URL Shortener</title>
-
-  <!-- Bootstrap CSS (CDN) -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <style>
-    :root { --brand: #0d6efd; }
-    body { background: #f4f6fb; min-height: 100vh; display: flex; flex-direction: column; }
-    .brand { font-weight: 700; letter-spacing: 0.4px; }
-    .card { border: 0; border-radius: 1rem; }
-    .short-link { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
-    .helper { color: #6c757d; }
-    .table-fixed tbody { max-height: 360px; overflow-y: auto; display: block; }
-    .table-fixed thead, .table-fixed tbody tr { display: table; width: 100%; table-layout: fixed; }
-    .table thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
-    .chip { background: #e7f1ff; color: #0b5ed7; border-radius: 999px; padding: .25rem .75rem; }
-  </style>
+  <title>URL Shortener — Dashboard</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/app.js"></script>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg bg-white shadow-sm">
-    <div class="container">
-      <a class="navbar-brand brand d-flex align-items-center gap-2" href="#">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect width="24" height="24" rx="5" fill="var(--brand)"></rect>
-          <path d="M8 12h8" stroke="white" stroke-width="1.5" stroke-linecap="round"></path>
-          <path d="M8 8h8" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.8"></path>
+
+<!-- Navbar -->
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/">
+      <span class="brand-logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
         </svg>
-        <span>URL Shortener</span>
-      </a>
-      <div class="ms-auto d-flex align-items-center gap-2">
-        <% if (locals.email) { %>
-          <span class="chip small"><%= locals.email %></span>
-          <a href="/logout" class="btn btn-sm btn-outline-secondary">Logout</a>
+      </span>
+      <span>Shortlink</span>
+    </a>
+    <div class="nav-actions">
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+        <svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <% if (locals.email) { %>
+        <span class="chip">
+          <%= email %>
+          <% if (role === 'admin') { %><span class="role-badge">Admin</span><% } %>
+        </span>
+        <a href="/logout" class="btn btn-secondary btn-sm">Logout</a>
+      <% } else { %>
+        <a href="/login" class="btn btn-ghost btn-sm">Login</a>
+        <a href="/signup" class="btn btn-primary btn-sm">Sign up</a>
+      <% } %>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <% if (locals.email) {
+    const totalUrls = urls ? urls.length : 0;
+    const totalClicks = urls ? urls.reduce((a, u) => a + (u.clicks || 0), 0) : 0;
+    const avgClicks = totalUrls ? Math.round((totalClicks / totalUrls) * 10) / 10 : 0;
+    const topUrl = urls && urls.length ? urls.reduce((a, u) => (u.clicks || 0) > (a.clicks || 0) ? u : a, urls[0]) : null;
+  %>
+
+  <!-- Header -->
+  <div style="margin-bottom: 1.5rem;">
+    <h1 class="hero-title">Welcome back<%= role === 'admin' ? ', Admin' : '' %></h1>
+    <p class="muted" style="margin:0;">
+      <% if (role === 'admin') { %>
+        You're viewing all links across every user.
+      <% } else { %>
+        Manage and track all your short links here.
+      <% } %>
+    </p>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </div>
+      <div class="stat-label"><%= role === 'admin' ? 'Total Links' : 'Your Links' %></div>
+      <div class="stat-value" id="statTotal"><%= totalUrls %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div class="stat-label">Total Clicks</div>
+      <div class="stat-value" id="statClicks"><%= totalClicks %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <div class="stat-label">Avg / Link</div>
+      <div class="stat-value" id="statAvg"><%= avgClicks %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <div class="stat-label">Top Link</div>
+      <div class="stat-value" style="font-size:1.05rem;" id="statTop">
+        <% if (topUrl) { %>
+          <span class="mono"><%= topUrl.shortid %></span>
+          <span class="muted small" style="display:block;margin-top:0.2rem;font-weight:500;"><%= topUrl.clicks %> clicks</span>
         <% } else { %>
-          <a href="/login" class="btn btn-sm btn-outline-secondary">Login</a>
-          <a href="/signup" class="btn btn-sm btn-primary">Sign up</a>
+          <span class="muted">—</span>
         <% } %>
       </div>
     </div>
-  </nav>
+  </div>
 
-  <main class="container flex-grow-1">
-    <div class="row g-5 py-4">
-      <div class="col-12 col-lg-8 col-xl-6 mx-auto">
-        <div class="card shadow-sm">
-          <div class="card-body p-4">
-            <h5 class="card-title mb-2">Create a short URL</h5>
-            <p class="card-text helper">Enter a destination URL and click Create. Example: <code>https://www.google.com</code></p>
+  <!-- Create Form -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+      <h2 class="card-title">Shorten a new URL</h2>
+      <p class="card-subtitle">Paste any destination URL — we'll generate a short link for you.</p>
 
-            <!-- Alerts -->
-            <div id="alertPlaceholder"></div>
-
-            <form id="createForm" novalidate>
-              <div class="form-floating mb-3">
-                <input id="redirecturl" name="redirecturl" type="url" class="form-control" placeholder="https://example.com" required>
-                <label for="redirecturl">Destination URL</label>
-                <div class="invalid-feedback">Please enter a valid URL (including http/https).</div>
-              </div>
-
-              <div class="d-grid">
-                <button id="createbtn" class="btn btn-primary btn-lg" type="submit">
-                  <span id="btnText">Create</span>
-                  <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
-                </button>
-              </div>
-            </form>
-
-            <hr>
-
-            <div class="helper small">
-              Note: Short URLs will be created on <code><%= process.env.DOMAIN %></code>.
-            </div>
+      <form id="createForm" novalidate>
+        <div class="field" style="margin-bottom: 0.75rem;">
+          <div class="input-wrap">
+            <input id="redirecturl" name="redirecturl" type="url" class="input"
+                   placeholder="https://example.com/your-very-long-url" required style="padding-right:1rem;">
           </div>
+          <span class="field-error hidden" id="urlError">Please enter a valid URL (including http:// or https://).</span>
         </div>
+        <button id="createbtn" class="btn btn-primary" type="submit">
+          <span id="btnText">Create short link</span>
+          <span id="btnSpinner" class="spinner hidden"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- URLs table -->
+  <div class="card table-card">
+    <div class="table-header">
+      <div class="title-block">
+        <h2 class="card-title" style="margin-bottom:0.1rem;">
+          <%= role === 'admin' ? 'All Short Links' : 'Your Short Links' %>
+        </h2>
+        <p class="card-subtitle small" style="margin:0;" id="resultCount">
+          <%= totalUrls %> <%= totalUrls === 1 ? 'link' : 'links' %>
+        </p>
       </div>
-      <div class="col-12">
-        <div class="card shadow-sm h-100">
-          <div class="card-body d-flex flex-column p-0">
-            <div class="p-4 pb-2">
-              <h5 class="card-title mb-1">Existing Short URLs</h5>
-              <p class="helper small mb-0">Click a short link to open the destination in a new tab.</p>
-            </div>
-
-            <div class="table-responsive">
-              <table class="table table-hover align-middle table-fixed">
-                <thead class="table-light">
-                  <tr>
-                    <th>Short ID</th>
-                    <th>Destination</th>
-                    <th>Clicks</th>
-                    <% if (role === "admin") { %>
-                      <th>Created By</th>
-                    <% } %>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="urlsTableBody">
-                  <% if (urls && urls.length) { %>
-                    <% urls.forEach((url) => { %>
-                      <tr id="row-<%= url.shortid %>">
-                        <td class="short-link text-truncate"><%= url.shortid %></td>
-                        <td class="text-truncate" title="<%= url.redirecturl %>"><%= url.redirecturl %></td>
-                        <td><span class="badge text-bg-light"><%= url.clicks %></span></td>
-                        <% if (role === "admin") { %>
-                          <td><%= url.userid.email %></td>
-                        <% } %>
-                        <td class="d-flex gap-2">
-                          <a class="btn btn-sm btn-outline-secondary" href="<%= process.env.DOMAIN %>/<%= url.shortid %>" target="_blank">Visit</a>
-                          <button class="btn btn-sm btn-outline-primary copy-btn" data-url="<%= process.env.DOMAIN %>/<%= url.shortid %>">Copy</button>
-                          <button class="btn btn-sm btn-outline-danger delete-btn" data-shortid="<%= url.shortid %>">Delete</button>
-                        </td>
-                      </tr>
-                    <% }); %>
-                  <% } else { %>
-                    <tr>
-                      <td colspan="4" class="text-center p-5">
-                        <div class="d-flex flex-column align-items-center gap-3">
-                          <!-- Simple link illustration -->
-                          <svg width="96" height="96" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path d="M10 14l-2 2a4 4 0 1 1-5.657-5.657l3-3A4 4 0 0 1 10 8" stroke="#93c5fd" stroke-width="1.5" stroke-linecap="round"/>
-                            <path d="M14 10l2-2a4 4 0 1 1 5.657 5.657l-3 3A4 4 0 0 1 14 16" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
-                            <path d="M8 12h8" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
-                          </svg>
-                          <div class="fw-semibold">No short URLs yet</div>
-                          <div class="helper">Create your first link using the form above.</div>
-                        </div>
-                      </td>
-                    </tr>
-                  <% } %>
-                </tbody>
-              </table>
-            </div>
-          </div>
+      <% if (totalUrls > 0) { %>
+      <div class="controls">
+        <div class="search-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="searchInput" class="input" type="search" placeholder="Search short id or destination…">
         </div>
+        <select id="sortSelect" class="input" style="padding:0.55rem 0.7rem; width:auto;">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="clicks-desc">Most clicks</option>
+          <option value="clicks-asc">Fewest clicks</option>
+        </select>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Short ID</th>
+            <th>Destination</th>
+            <th style="width:90px;">Clicks</th>
+            <% if (role === 'admin') { %><th>Created by</th><% } %>
+            <th style="width:1px; text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="urlsTableBody">
+          <% if (urls && urls.length) { %>
+            <% urls.forEach((url) => { %>
+              <tr id="row-<%= url.shortid %>" data-shortid="<%= url.shortid %>" data-dest="<%= url.redirecturl %>" data-clicks="<%= url.clicks %>" data-created="<%= url.createdAt ? new Date(url.createdAt).getTime() : 0 %>">
+                <td><span class="short-id"><%= url.shortid %></span></td>
+                <td><a class="dest-link truncate" href="<%= url.redirecturl %>" target="_blank" rel="noopener" title="<%= url.redirecturl %>"><%= url.redirecturl %></a></td>
+                <td><span class="click-badge"><%= url.clicks %></span></td>
+                <% if (role === 'admin') { %>
+                  <td class="muted small"><%= url.userid && url.userid.email ? url.userid.email : '—' %></td>
+                <% } %>
+                <td>
+                  <div class="row-actions">
+                    <a class="btn btn-ghost btn-sm" href="<%= domain %>/<%= url.shortid %>" target="_blank" rel="noopener" title="Open">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+                    <button class="btn btn-ghost btn-sm copy-btn" data-url="<%= domain %>/<%= url.shortid %>" title="Copy">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                    <button class="btn btn-danger btn-sm delete-btn" data-shortid="<%= url.shortid %>" title="Delete">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          <% } else { %>
+            <tr id="emptyRow">
+              <td colspan="<%= role === 'admin' ? 5 : 4 %>">
+                <div class="empty-state">
+                  <div class="icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  </div>
+                  <div class="title">No short links yet</div>
+                  <div>Create your first short URL using the form above.</div>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+          <tr id="noMatchRow" class="hidden">
+            <td colspan="<%= role === 'admin' ? 5 : 4 %>">
+              <div class="empty-state">
+                <div class="title">No matches</div>
+                <div>Try a different search term.</div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <% } else { %>
+  <!-- Unauthenticated landing -->
+  <section class="auth-wrap">
+    <div class="auth-hero">
+      <h1>Tiny links. <span class="gradient-text">Big reach.</span></h1>
+      <p>Create branded short URLs, track every click, and manage them all from one clean dashboard.</p>
+      <ul class="feature-list">
+        <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Generate short links in one click</li>
+        <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Real-time click counters</li>
+        <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure, private dashboard for your links</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <h2 class="card-title">Get started</h2>
+        <p class="card-subtitle">Sign up free, no credit card required.</p>
+        <a href="/signup" class="btn btn-primary btn-lg btn-block" style="margin-bottom:0.6rem;">Create free account</a>
+        <a href="/login" class="btn btn-secondary btn-lg btn-block">I already have an account</a>
       </div>
     </div>
-  </main>
+  </section>
+  <% } %>
 
-  <footer class="bg-white border-top py-3 mt-auto">
-    <div class="container text-center small text-muted">© <span id="year"></span> URL Shortener — All rights reserved.</div>
-  </footer>
+</main>
 
-  <!-- Bootstrap JS + Popper (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<footer class="footer">
+  © <span id="year"></span> Shortlink — built with Express + MongoDB.
+</footer>
 
-  <script>
-    // Set footer year if present
-    const _yEl = document.getElementById('year');
-    if (_yEl) _yEl.textContent = new Date().getFullYear();
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
 
-    // Helpers
-    const showAlert = (type, message, timeout = 5000) => {
-      const wrapper = document.getElementById('alertPlaceholder');
-      const alertId = 'alert-' + Date.now();
-      const alertHtml = `
-        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
-          ${message}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>`;
-      wrapper.innerHTML = alertHtml + wrapper.innerHTML;
-      if (timeout) {
-        setTimeout(() => {
-          const el = document.getElementById(alertId);
-          if (el) {
-            const bs = bootstrap.Alert.getOrCreateInstance(el);
-            bs.close();
-          }
-        }, timeout);
-      }
-    };
+  <% if (locals.email) { %>
+  // === Create form (user role only) ===
+  const createForm = document.getElementById('createForm');
+  if (createForm) {
+    const redirectInput = $('#redirecturl');
+    const urlError = $('#urlError');
+    const createBtn = $('#createbtn');
+    const btnSpinner = $('#btnSpinner');
+    const tableBody = $('#urlsTableBody');
 
-    const createRowHtml = (shortUrl, redirectUrl, clicks, shortid) => {
-      return `
-        <tr id="row-${shortid}">
-          <td class="short-link text-truncate">${shortid}</td>
-          <td class="text-truncate" title="${redirectUrl}">${redirectUrl}</td>
-          <td><span class="badge text-bg-light">${clicks}</span></td>
-          <td class="d-flex gap-2">
-            <a class="btn btn-sm btn-outline-secondary" href="${shortUrl}" target="_blank">Visit</a>
-            <button class="btn btn-sm btn-outline-primary copy-btn" data-url="${shortUrl}">Copy</button>
-          </td>
-        </tr>
-      `;
-    };
+    function isValidUrl(str) {
+      try { const u = new URL(str); return u.protocol === 'http:' || u.protocol === 'https:'; }
+      catch { return false; }
+    }
 
-    // DOM elements
-    const $ = (id) => document.getElementById(id);
-    const form = $('createForm');
-    const redirectInput = $('redirecturl');
-    const tableBody = $('urlsTableBody');
-    const createBtn = $('createbtn');
-    const btnText = $('btnText');
-    const btnSpinner = $('btnSpinner');
-
-    // Form submit (fetch POST)
-    form.addEventListener('submit', async (e) => {
+    createForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      redirectInput.classList.remove('is-invalid');
-
       const value = redirectInput.value.trim();
-      if (!value) {
+      redirectInput.classList.remove('is-invalid');
+      urlError.classList.add('hidden');
+
+      if (!value || !isValidUrl(value)) {
         redirectInput.classList.add('is-invalid');
-        return;
-      }
-      // Basic URL validation (client-side) before network
-      try {
-        new URL(value);
-      } catch (_) {
-        redirectInput.classList.add('is-invalid');
+        urlError.classList.remove('hidden');
+        redirectInput.focus();
         return;
       }
 
+      createBtn.disabled = true;
+      btnSpinner.classList.remove('hidden');
       try {
-        // Disable button and show spinner
-        if (createBtn) createBtn.disabled = true;
-        if (btnSpinner) btnSpinner.classList.remove('d-none');
-
         const resp = await fetch('/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ redirecturl: value })
         });
-
-        const data = await resp.json();
-
+        const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
-          // Show error from server if available
-          const errMsg = data?.error || data?.message || 'An unexpected error occurred.';
-          showAlert('danger', errMsg);
+          toast.error(data.error || 'Failed to create short link.');
           return;
         }
+        toast.success(data.message || 'Short URL created!');
 
-        // Success
-        showAlert('success', data.message || 'Short URL created successfully.');
+        // Remove empty-state row if present
+        const emptyRow = document.getElementById('emptyRow');
+        if (emptyRow) emptyRow.remove();
 
-        // Insert new row into table
-        if (data.url) {
-          // data.url expected like "/SHORTID"
-          const parts = data.url.split('/');
-          const shortid = parts[parts.length - 1];
-          const newRowHtml = createRowHtml(data.url, value, 0, shortid);
-
-          // If "No short URLs found." row exists, remove it
-          const noRows = tableBody.querySelector('td[colspan="4"]');
-          if (noRows) tableBody.innerHTML = newRowHtml;
-          else tableBody.insertAdjacentHTML('afterbegin', newRowHtml);
-
-          // clear input
-          redirectInput.value = '';
-        } else {
-          // If server returns created id differently, just reload table visually (user can refresh).
-        }
+        // Add the new row at the top
+        const shortUrl = data.url;
+        const shortid = shortUrl.split('/').pop();
+        const tr = document.createElement('tr');
+        tr.id = 'row-' + shortid;
+        tr.dataset.shortid = shortid;
+        tr.dataset.dest = value;
+        tr.dataset.clicks = '0';
+        tr.dataset.created = Date.now().toString();
+        const isAdmin = <%- role === 'admin' ? 'true' : 'false' %>;
+        const userEmail = <%- JSON.stringify(email || '') %>;
+        tr.innerHTML = `
+          <td><span class="short-id">${shortid}</span></td>
+          <td><a class="dest-link truncate" href="${value}" target="_blank" rel="noopener" title="${value}">${value}</a></td>
+          <td><span class="click-badge">0</span></td>
+          ${isAdmin ? `<td class="muted small">${userEmail}</td>` : ''}
+          <td>
+            <div class="row-actions">
+              <a class="btn btn-ghost btn-sm" href="${shortUrl}" target="_blank" rel="noopener" title="Open">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </a>
+              <button class="btn btn-ghost btn-sm copy-btn" data-url="${shortUrl}" title="Copy">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button class="btn btn-danger btn-sm delete-btn" data-shortid="${shortid}" title="Delete">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              </button>
+            </div>
+          </td>`;
+        tableBody.insertBefore(tr, tableBody.firstElementChild);
+        updateStats();
+        redirectInput.value = '';
       } catch (err) {
-        showAlert('danger', `An unexpected error occurred: ${err.message}`);
+        toast.error('Network error: ' + err.message);
       } finally {
-        if (createBtn) createBtn.disabled = false;
-        if (btnSpinner) btnSpinner.classList.add('d-none');
+        createBtn.disabled = false;
+        btnSpinner.classList.add('hidden');
       }
     });
+  }
 
-    // Copy button handler
-    document.addEventListener('click', async (e) => {
-      const btn = e.target.closest('.copy-btn');
-      if (!btn) return;
-      const url = btn.getAttribute('data-url') || btn.getAttribute('href');
-      try {
-        await navigator.clipboard.writeText(url);
-        showAlert('success', 'Short URL copied to clipboard!', 2500);
-      } catch (_) {
-        showAlert('warning', 'Press Ctrl/Cmd + C to copy.', 2500);
-      }
-    });
+  // === Copy button ===
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.copy-btn');
+    if (!btn) return;
+    const url = btn.dataset.url;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Short URL copied!', 2500);
+    } catch {
+      toast.warning('Press Ctrl/Cmd + C to copy.', 2500);
+    }
+  });
 
-    // Delete button handler
-    document.addEventListener('click', async (e) => {
-      const btn = e.target.closest('.delete-btn');
-      if (!btn) return;
-      const shortid = btn.getAttribute('data-shortid');
-      if (!confirm(`Delete short URL "${shortid}"?`)) return;
-      try {
-        btn.disabled = true;
-        const resp = await fetch(`/url/${shortid}`, { method: 'DELETE' });
-        const data = await resp.json();
-        if (!resp.ok) { showAlert('danger', data.error || 'Failed to delete.'); btn.disabled = false; return; }
-        const row = document.getElementById(`row-${shortid}`);
-        if (row) row.remove();
-        showAlert('success', 'Short URL deleted.', 2500);
-      } catch (err) {
-        showAlert('danger', `Error: ${err.message}`);
+  // === Delete button ===
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.delete-btn');
+    if (!btn) return;
+    const shortid = btn.dataset.shortid;
+    if (!confirm(`Delete short URL "${shortid}"?`)) return;
+    btn.disabled = true;
+    try {
+      const resp = await fetch(`/url/${shortid}`, { method: 'DELETE' });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        toast.error(data.error || 'Failed to delete.');
         btn.disabled = false;
+        return;
       }
+      const row = document.getElementById('row-' + shortid);
+      if (row) row.remove();
+      toast.success('Short URL deleted.', 2500);
+      updateStats();
+      if (!$('#urlsTableBody tr[data-shortid]')) {
+        // re-render an empty state
+        const colspan = <%- role === 'admin' ? 5 : 4 %>;
+        const tr = document.createElement('tr');
+        tr.id = 'emptyRow';
+        tr.innerHTML = `<td colspan="${colspan}"><div class="empty-state">
+          <div class="icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+          <div class="title">No short links yet</div>
+          <div>Create your first short URL using the form above.</div></div></td>`;
+        $('#urlsTableBody').appendChild(tr);
+      }
+    } catch (err) {
+      toast.error('Network error: ' + err.message);
+      btn.disabled = false;
+    }
+  });
+
+  // === Search ===
+  const searchInput = $('#searchInput');
+  const noMatchRow = $('#noMatchRow');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      const rows = $$('#urlsTableBody tr[data-shortid]');
+      let visible = 0;
+      rows.forEach(r => {
+        const match = !q
+          || r.dataset.shortid.toLowerCase().includes(q)
+          || r.dataset.dest.toLowerCase().includes(q);
+        r.classList.toggle('hidden', !match);
+        if (match) visible++;
+      });
+      const emptyRow = document.getElementById('emptyRow');
+      if (noMatchRow) noMatchRow.classList.toggle('hidden', visible !== 0 || rows.length === 0);
+      if (emptyRow) emptyRow.classList.toggle('hidden', !!q);
+      const countEl = $('#resultCount');
+      if (countEl) countEl.textContent = `${visible} of ${rows.length} ${rows.length === 1 ? 'link' : 'links'}`;
     });
-  </script>
+  }
+
+  // === Sort ===
+  const sortSelect = $('#sortSelect');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      const mode = sortSelect.value;
+      const tbody = $('#urlsTableBody');
+      const rows = $$('#urlsTableBody tr[data-shortid]');
+      rows.sort((a, b) => {
+        const ac = parseInt(a.dataset.clicks, 10);
+        const bc = parseInt(b.dataset.clicks, 10);
+        const at = parseInt(a.dataset.created, 10);
+        const bt = parseInt(b.dataset.created, 10);
+        if (mode === 'newest') return bt - at;
+        if (mode === 'oldest') return at - bt;
+        if (mode === 'clicks-desc') return bc - ac;
+        if (mode === 'clicks-asc') return ac - bc;
+        return 0;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+    });
+  }
+
+  // === Stats refresh ===
+  function updateStats() {
+    const rows = $$('#urlsTableBody tr[data-shortid]');
+    const total = rows.length;
+    const clicks = rows.reduce((a, r) => a + parseInt(r.dataset.clicks, 10), 0);
+    $('#statTotal').textContent = total;
+    $('#statClicks').textContent = clicks;
+    $('#statAvg').textContent = total ? (Math.round((clicks / total) * 10) / 10) : 0;
+    const countEl = $('#resultCount');
+    if (countEl) countEl.textContent = `${total} ${total === 1 ? 'link' : 'links'}`;
+  }
+  <% } %>
+</script>
+
 </body>
 </html>
